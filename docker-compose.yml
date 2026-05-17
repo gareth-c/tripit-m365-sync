@@ -15,6 +15,17 @@ services:
       # Edit these values to match your setup
       - DOMAIN=trip-it-sync.ipmonkey.net
       - HTTPS_PORT=8443
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: "0.50"
 
   syncer:
     image: ghcr.io/gareth-c/tripit-m365-sync/syncer:latest
@@ -26,6 +37,18 @@ services:
       # Edit this value to your TripIt private iCal URL
       - TRIPIT_ICS_URL=https://www.tripit.com/feed/ical/private/TOKEN/tripit.ics
       - SYNC_INTERVAL_SECONDS=1800
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: "0.25"
 
 volumes:
   caddy_data:

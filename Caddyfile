@@ -1,4 +1,11 @@
 {$DOMAIN}:{$HTTPS_PORT} {
     root * /srv/ics
-    file_server
+
+    @ical path /feed/ical/private/*/tripit.ics
+    route {
+        handle @ical {
+            file_server
+        }
+        respond 404
+    }
 }
