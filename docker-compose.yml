@@ -1,6 +1,6 @@
 services:
   caddy:
-    image: caddy:alpine
+    image: caddy:alpine@sha256:86deaf5e3d3408a6ccec08fbb79989783dd26e206ae10bcf78a801dc8c9ab794
     restart: unless-stopped
     ports:
       - "80:80"
@@ -28,7 +28,7 @@ services:
           cpus: "0.50"
 
   syncer:
-    image: ghcr.io/gareth-c/tripit-m365-sync/syncer:latest
+    image: ghcr.io/gareth-c/tripit-m365-sync/syncer:main
     build: ./syncer
     restart: unless-stopped
     volumes:
@@ -44,6 +44,19 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import os, time, sys
+          st = os.stat('/data/ics')
+          sys.exit(0 if time.time() - st.st_mtime < 7200 else 1)
+      interval: 30m
+      timeout: 10s
+      retries: 2
+      start_period: 60s
     deploy:
       resources:
         limits:
