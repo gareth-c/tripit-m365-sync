@@ -93,6 +93,16 @@ docker-compose logs -f caddy
 
 **Feed returns 404?** The syncer may not have run yet. Check `docker-compose logs syncer` — it fetches immediately on startup, so a 404 shortly after launch usually means the TripIt URL is wrong.
 
+## Pre-built Image
+
+The syncer image is published to GitHub Container Registry on every push to `main` and on version tags:
+
+```
+ghcr.io/gareth-c/tripit-m365-sync/syncer:latest
+```
+
+Supported platforms: `linux/amd64`, `linux/arm64`.
+
 ## Updating
 
 ```bash

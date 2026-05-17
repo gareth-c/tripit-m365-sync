@@ -17,6 +17,7 @@ services:
       - HTTPS_PORT=8443
 
   syncer:
+    image: ghcr.io/gareth-c/tripit-m365-sync/syncer:latest
     build: ./syncer
     restart: unless-stopped
     volumes:
