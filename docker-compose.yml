@@ -44,11 +44,7 @@ services:
       test:
         - CMD
         - python
-        - -c
-        - |
-          import os, time, sys
-          st = os.stat('/data/ics')
-          sys.exit(0 if time.time() - st.st_mtime < 7200 else 1)
+        - /app/syncer_health.py
       interval: 30m
       timeout: 10s
       retries: 2
