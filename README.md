@@ -23,10 +23,13 @@ The root cause is that TripIt's feed uses redirect chains and HTTP response patt
 
 This service fetches your TripIt feed every 30 minutes and caches it locally. Caddy re-serves it over HTTPS with an automatically managed Let's Encrypt certificate. M365 subscribes to your domain's URL instead of TripIt directly — a clean, standards-compliant HTTPS `.ics` file with no redirects.
 
-The served URL mirrors the TripIt path exactly. For example:
+On first launch, the syncer generates a random token and serves the feed at a URL that has **no relation** to your TripIt private token:
 
-- TripIt source: `https://www.tripit.com/feed/ical/private/TOKEN/tripit.ics`
-- Served at: `https://your-domain.com/feed/ical/private/TOKEN/tripit.ics`
+```
+https://your-domain.com:8443/feed/ical/private/<RANDOM_TOKEN>/tripit.ics
+```
+
+The full URL is printed to the container log on every startup (see [Getting your URL](#getting-your-url)).
 
 ## Prerequisites
 
@@ -39,14 +42,24 @@ The served URL mirrors the TripIt path exactly. For example:
 
 **1. Clone or copy this repo onto your server.**
 
-**2. Edit `docker-compose.yml`** — find the two `environment:` blocks and fill in your values:
+**2. Edit `docker-compose.yml`** — set your values in the `environment:` blocks:
+
+| Variable | Where | Description |
+|---|---|---|
+| `DOMAIN` | caddy + syncer | Your domain or subdomain |
+| `HTTPS_PORT` | caddy + syncer | HTTPS port (default: `8443`) |
+| `TRIPIT_ICS_URL` | syncer | Your TripIt private iCal URL |
+| `SYNC_INTERVAL_SECONDS` | syncer | Fetch interval in seconds (default: `1800`) |
 
 ```yaml
 # In the caddy service:
 - DOMAIN=your-domain.com
+- HTTPS_PORT=8443
 
 # In the syncer service:
 - TRIPIT_ICS_URL=https://www.tripit.com/feed/ical/private/YOUR_TOKEN/tripit.ics
+- DOMAIN=your-domain.com
+- HTTPS_PORT=8443
 ```
 
 **3. Start the services:**
@@ -57,20 +70,34 @@ docker-compose up -d
 
 Caddy will automatically obtain a Let's Encrypt certificate on first start (requires DNS to already be pointing at the server). This takes about 60 seconds.
 
-**4. Verify it's working:**
+## Getting Your URL
+
+The syncer prints your subscription URL to the container log on every startup:
 
 ```bash
-curl -I https://your-domain.com/feed/ical/private/YOUR_TOKEN/tripit.ics
+docker-compose logs syncer
 ```
 
-You should see `HTTP/2 200` and `content-type: text/calendar`.
+Look for output like this:
+
+```
+============================================================
+TripIt-Sync-M365 starting
+  Interval: 1800s (30 min)
+
+  Subscribe to this URL in Microsoft 365:
+  https://your-domain.com:8443/feed/ical/private/abc123.../tripit.ics
+============================================================
+```
+
+The random token is generated once and saved to the `ics_cache` volume — it stays the same across restarts.
 
 ## Adding to Microsoft 365
 
-1. Open [Outlook on the web](https://outlook.office.com) or the M365 Calendar app
-2. Go to **Calendar** > **Add calendar** > **Subscribe from web**
-3. Paste your URL: `https://your-domain.com/feed/ical/private/YOUR_TOKEN/tripit.ics`
-4. Give it a name (e.g. *TripIt*) and click **Import**
+1. Copy the URL from `docker-compose logs syncer`
+2. Open [Outlook on the web](https://outlook.office.com) or the M365 Calendar app
+3. Go to **Calendar** > **Add calendar** > **Subscribe from web**
+4. Paste the URL and give it a name (e.g. *TripIt*), then click **Import**
 
 M365 will poll the feed periodically (typically every 24 hours). Because the feed is now served as a plain HTTPS `.ics` file with no redirects, it syncs reliably.
 
@@ -98,7 +125,7 @@ docker-compose logs -f caddy
 The syncer image is published to GitHub Container Registry on every push to `main` and on version tags:
 
 ```
-ghcr.io/gareth-c/tripit-m365-sync/syncer:latest
+ghcr.io/gareth-c/tripit-m365-sync/syncer:main
 ```
 
 Supported platforms: `linux/amd64`, `linux/arm64`.
@@ -110,8 +137,12 @@ docker-compose pull
 docker-compose up -d
 ```
 
-## Changing the Sync Interval
+## Changing the Port or Sync Interval
 
-Edit `SYNC_INTERVAL_SECONDS` in the syncer's `environment:` block in `docker-compose.yml`. Default is `1800` (30 minutes). Restart with `docker-compose up -d`.
+All configuration is in the `environment:` blocks in `docker-compose.yml`. Change any value and restart:
+
+```bash
+docker-compose up -d
+```
 
 Note: M365 controls how often it polls your feed — typically every 24 hours regardless of how often your service syncs. The 30-minute sync interval ensures your cached copy is fresh when M365 does poll.

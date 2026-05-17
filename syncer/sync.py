@@ -1,14 +1,16 @@
 """Fetch a TripIt iCal feed periodically and cache it for local re-serving."""
 
 import os
+import secrets
 import shutil
 import tempfile
 import time
-from urllib.parse import urlparse
 
 import requests
 
 TRIPIT_ICS_URL = os.environ["TRIPIT_ICS_URL"]
+DOMAIN = os.environ["DOMAIN"]
+HTTPS_PORT = os.environ.get("HTTPS_PORT", "8443")
 SYNC_INTERVAL_RAW = int(os.environ.get("SYNC_INTERVAL_SECONDS", 1800))
 if SYNC_INTERVAL_RAW < 60:
     raise ValueError(
@@ -16,28 +18,33 @@ if SYNC_INTERVAL_RAW < 60:
     )
 SYNC_INTERVAL = SYNC_INTERVAL_RAW
 OUTPUT_BASE = os.path.realpath("/data/ics")
+TOKEN_FILE = os.path.join(OUTPUT_BASE, ".token")
 MAX_BYTES = 10 * 1024 * 1024  # 10 MB — generous for an iCal file
 
 
-def redact_url(url: str) -> str:
-    """Replace the private token segment in a TripIt URL with ***."""
-    parsed = urlparse(url)
-    parts = parsed.path.split("/")
-    redacted = [
-        "***" if i > 0 and parts[i - 1] == "private" else part
-        for i, part in enumerate(parts)
-    ]
-    return parsed._replace(path="/".join(redacted)).geturl()
+def load_or_create_token() -> str:
+    """Return the persistent random URL token, creating it on first run."""
+    os.makedirs(OUTPUT_BASE, exist_ok=True)
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, encoding="utf-8") as fh:
+            return fh.read().strip()
+    token = secrets.token_urlsafe(32)
+    with open(TOKEN_FILE, "w", encoding="utf-8") as fh:
+        fh.write(token)
+    return token
 
 
-def url_to_local_path(url: str) -> str:
-    """Derive a safe local path from the URL, confined to OUTPUT_BASE."""
-    parsed = urlparse(url)
-    relative = parsed.path.lstrip("/")
-    dest = os.path.realpath(os.path.join(OUTPUT_BASE, relative))
-    if not dest.startswith(OUTPUT_BASE + os.sep):
-        raise ValueError(f"URL path escapes OUTPUT_BASE: {url!r}")
-    return dest
+def build_dest(token: str) -> str:
+    """Return the local path where the cached .ics file is written."""
+    return os.path.join(
+        OUTPUT_BASE, "feed", "ical", "private", token, "tripit.ics"
+    )
+
+
+def build_url(token: str) -> str:
+    """Return the public HTTPS URL subscribers should use."""
+    port = f":{HTTPS_PORT}" if HTTPS_PORT not in ("443", "80") else ""
+    return f"https://{DOMAIN}{port}/feed/ical/private/{token}/tripit.ics"
 
 
 def fetch_and_cache(url: str, dest: str) -> None:
@@ -70,14 +77,18 @@ def fetch_and_cache(url: str, dest: str) -> None:
 
 def main() -> None:
     """Run the sync loop indefinitely."""
-    dest = url_to_local_path(TRIPIT_ICS_URL)
+    token = load_or_create_token()
+    dest = build_dest(token)
+    feed_url = build_url(token)
+
+    print("=" * 60, flush=True)
     print("TripIt-Sync-M365 starting", flush=True)
-    print(f"  Source:   {redact_url(TRIPIT_ICS_URL)}", flush=True)
-    print(f"  Dest:     {dest}", flush=True)
-    print(
-        f"  Interval: {SYNC_INTERVAL}s ({SYNC_INTERVAL // 60} min)",
-        flush=True,
-    )
+    print(f"  Interval: {SYNC_INTERVAL}s ({SYNC_INTERVAL // 60} min)",
+          flush=True)
+    print("", flush=True)
+    print("  Subscribe to this URL in Microsoft 365:", flush=True)
+    print(f"  {feed_url}", flush=True)
+    print("=" * 60, flush=True)
 
     while True:
         try:

@@ -37,6 +37,8 @@ services:
       # Edit this value to your TripIt private iCal URL
       - TRIPIT_ICS_URL=https://www.tripit.com/feed/ical/private/TOKEN/tripit.ics
       - SYNC_INTERVAL_SECONDS=1800
+      - DOMAIN=tripit-m365-sync.domain.com
+      - HTTPS_PORT=8443
     security_opt:
       - no-new-privileges:true
     cap_drop:
