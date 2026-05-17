@@ -1,0 +1,4 @@
+{$DOMAIN}:{$HTTPS_PORT} {
+    root * /srv/ics
+    file_server
+}
