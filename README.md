@@ -42,24 +42,26 @@ The full URL is printed to the container log on every startup (see [Getting your
 
 **1. Clone or copy this repo onto your server.**
 
-**2. Edit `docker-compose.yml`** — set your values in the `environment:` blocks:
+**2. Create your `.env` file from the example:**
 
-| Variable | Where | Description |
-|---|---|---|
-| `DOMAIN` | caddy + syncer | Your domain or subdomain |
-| `HTTPS_PORT` | caddy + syncer | HTTPS port (default: `8443`) |
-| `TRIPIT_ICS_URL` | syncer | Your TripIt private iCal URL |
-| `SYNC_INTERVAL_SECONDS` | syncer | Fetch interval in seconds (default: `1800`) |
+```bash
+cp .env.example .env
+```
 
-```yaml
-# In the caddy service:
-- DOMAIN=your-domain.com
-- HTTPS_PORT=8443
+Then edit `.env` with your values:
 
-# In the syncer service:
-- TRIPIT_ICS_URL=https://www.tripit.com/feed/ical/private/YOUR_TOKEN/tripit.ics
-- DOMAIN=your-domain.com
-- HTTPS_PORT=8443
+| Variable | Description |
+|---|---|
+| `TRIPIT_ICS_URL` | Your TripIt private iCal URL |
+| `DOMAIN` | Your domain or subdomain |
+| `HTTPS_PORT` | HTTPS port (default: `8443`) |
+| `SYNC_INTERVAL_SECONDS` | Fetch interval in seconds (default: `1800`) |
+
+```bash
+TRIPIT_ICS_URL=https://www.tripit.com/feed/ical/private/YOUR_TOKEN/tripit.ics
+DOMAIN=your-domain.com
+HTTPS_PORT=8443
+SYNC_INTERVAL_SECONDS=1800
 ```
 
 **3. Start the services:**
