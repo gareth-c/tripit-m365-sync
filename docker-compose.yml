@@ -4,8 +4,8 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "${HTTPS_PORT:-8443}:${HTTPS_PORT:-8443}"
-      - "${HTTPS_PORT:-8443}:${HTTPS_PORT:-8443}/udp"
+      - "${HTTPS_PORT}:${HTTPS_PORT}"
+      - "${HTTPS_PORT}:${HTTPS_PORT}/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -37,9 +37,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    read_only: true
-    tmpfs:
-      - /tmp
     healthcheck:
       test:
         - CMD
