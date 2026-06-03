@@ -1,10 +1,12 @@
 """Fetch a TripIt iCal feed periodically and cache it for local re-serving."""
 
+import json
 import os
 import secrets
 import shutil
 import tempfile
 import time
+from datetime import datetime, timezone
 
 import requests
 
@@ -47,6 +49,12 @@ def build_url(token: str) -> str:
     return f"https://{DOMAIN}{port}/feed/ical/private/{token}/tripit.ics"
 
 
+def build_health_url(token: str) -> str:
+    """Return the public HTTPS URL for the health endpoint."""
+    port = f":{HTTPS_PORT}" if HTTPS_PORT not in ("443", "80") else ""
+    return f"https://{DOMAIN}{port}/feed/ical/private/{token}/health"
+
+
 def fetch_and_cache(url: str, dest: str) -> None:
     """Stream the iCal feed from url and atomically write it to dest."""
     os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -75,11 +83,40 @@ def fetch_and_cache(url: str, dest: str) -> None:
         raise
 
 
+def write_health_file(dest_dir: str, status: str, message: str) -> None:
+    """Atomically write a JSON health file to dest_dir/health."""
+    os.makedirs(dest_dir, exist_ok=True)
+    now = datetime.now(timezone.utc)
+    payload = json.dumps({
+        "status": status,
+        "last_sync": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "last_sync_age_seconds": 0,
+        "message": message,
+    }, indent=2)
+    dest = os.path.join(dest_dir, "health")
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=dest_dir, delete=False, suffix=".tmp", mode="w",
+            encoding="utf-8"
+        ) as tmp:
+            tmp_path = tmp.name
+            tmp.write(payload)
+        shutil.move(tmp_path, dest)
+        tmp_path = None
+    except Exception:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
+
+
 def main() -> None:
     """Run the sync loop indefinitely."""
     token = load_or_create_token()
     dest = build_dest(token)
+    dest_dir = os.path.dirname(dest)
     feed_url = build_url(token)
+    health_url = build_health_url(token)
 
     print("=" * 60, flush=True)
     print("TripIt-Sync-M365 starting", flush=True)
@@ -88,16 +125,21 @@ def main() -> None:
     print("", flush=True)
     print("  Subscribe to this URL in Microsoft 365:", flush=True)
     print(f"  {feed_url}", flush=True)
+    print("", flush=True)
+    print("  Health endpoint:", flush=True)
+    print(f"  {health_url}", flush=True)
     print("=" * 60, flush=True)
 
     while True:
         try:
             fetch_and_cache(TRIPIT_ICS_URL, dest)
+            write_health_file(dest_dir, "ok", "Feed synced successfully")
         except (OSError, ValueError, requests.RequestException) as exc:
             print(
                 f"[WARN] Fetch failed: {exc} — keeping last cached version",
                 flush=True,
             )
+            write_health_file(dest_dir, "fail", str(exc))
         time.sleep(SYNC_INTERVAL)
 
 

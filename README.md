@@ -94,6 +94,51 @@ TripIt-Sync-M365 starting
 
 The random token is generated once and saved to the `ics_cache` volume — it stays the same across restarts.
 
+The health endpoint URL is printed alongside the feed URL:
+
+```
+============================================================
+TripIt-Sync-M365 starting
+  Interval: 1800s (30 min)
+
+  Subscribe to this URL in Microsoft 365:
+  https://your-domain.com:8443/feed/ical/private/abc123.../tripit.ics
+
+  Health endpoint:
+  https://your-domain.com:8443/feed/ical/private/abc123.../health
+============================================================
+```
+
+## Health Endpoint
+
+Point your monitoring tool at:
+
+```
+https://your-domain.com:8443/feed/ical/private/<token>/health
+```
+
+Always returns HTTP 200. Check the `"status"` field in the JSON body:
+
+```json
+{
+  "status": "ok",
+  "last_sync": "2026-05-18T10:30:00Z",
+  "last_sync_age_seconds": 0,
+  "message": "Feed synced successfully"
+}
+```
+
+On a failed sync the last cached `.ics` is preserved and the health file reflects the failure:
+
+```json
+{
+  "status": "fail",
+  "last_sync": "2026-05-18T10:00:00Z",
+  "last_sync_age_seconds": 0,
+  "message": "Fetch failed: Connection timeout"
+}
+```
+
 ## Adding to Microsoft 365
 
 1. Copy the URL from `docker-compose logs syncer`

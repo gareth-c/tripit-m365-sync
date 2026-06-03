@@ -2,8 +2,14 @@
     root * /srv/ics
 
     @ical path /feed/ical/private/*/tripit.ics
+    @health path /feed/ical/private/*/health
+
     route {
         handle @ical {
+            file_server
+        }
+        handle @health {
+            header Content-Type application/json
             file_server
         }
         respond 404
