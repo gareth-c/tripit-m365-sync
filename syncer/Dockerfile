@@ -1,13 +1,6 @@
 FROM python:3.12-alpine@sha256:236173eb74001afe2f60862de935b74fcbd00adfca247b2c27051a70a6a39a2d
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
-    && apk add --no-cache su-exec \
-    && addgroup -S syncer \
-    && adduser -S -G syncer syncer \
-    && mkdir -p /data/ics /data/caddy \
-    && chown syncer:syncer /data/ics /data/caddy
-COPY sync.py syncer_health.py caddy_setup.py entrypoint.sh ./
-RUN chmod +x entrypoint.sh
-ENTRYPOINT ["/app/entrypoint.sh"]
+RUN pip install --no-cache-dir -r requirements.txt
+COPY sync.py syncer_health.py caddy_setup.py ./
 CMD ["python", "-u", "sync.py"]
