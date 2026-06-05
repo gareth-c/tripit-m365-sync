@@ -1,5 +1,6 @@
 services:
   caddy:
+    container_name: caddy
     image: caddy:alpine@sha256:86deaf5e3d3408a6ccec08fbb79989783dd26e206ae10bcf78a801dc8c9ab794
     restart: unless-stopped
     depends_on:
@@ -29,6 +30,7 @@ services:
           cpus: "0.50"
 
   syncer:
+    container_name: syncer
     image: ghcr.io/gareth-c/tripit-m365-sync/syncer:main
     build: ./syncer
     restart: unless-stopped
