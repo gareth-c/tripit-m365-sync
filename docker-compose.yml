@@ -2,12 +2,15 @@ services:
   caddy:
     image: caddy:alpine@sha256:86deaf5e3d3408a6ccec08fbb79989783dd26e206ae10bcf78a801dc8c9ab794
     restart: unless-stopped
+    depends_on:
+      syncer:
+        condition: service_started
     ports:
       - "80:80"
       - "${HTTPS_PORT}:${HTTPS_PORT}"
       - "${HTTPS_PORT}:${HTTPS_PORT}/udp"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_conf:/etc/caddy
       - caddy_data:/data
       - caddy_config:/config
       - ics_cache:/srv/ics:ro
@@ -31,6 +34,7 @@ services:
     restart: unless-stopped
     volumes:
       - ics_cache:/data/ics
+      - caddy_conf:/data/caddy
     env_file:
       - .env
     security_opt:
@@ -55,4 +59,5 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  caddy_conf:
   ics_cache:

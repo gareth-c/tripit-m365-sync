@@ -4,6 +4,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
     && addgroup -S syncer \
     && adduser -S -G syncer syncer
-COPY sync.py syncer_health.py ./
+COPY sync.py syncer_health.py caddy_setup.py ./
 USER syncer
 CMD ["python", "-u", "sync.py"]

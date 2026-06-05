@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 
 import requests
 
+from caddy_setup import ensure_caddyfile
+
 TRIPIT_ICS_URL = os.environ["TRIPIT_ICS_URL"]
 DOMAIN = os.environ["DOMAIN"]
 HTTPS_PORT = os.environ.get("HTTPS_PORT", "8443")
@@ -112,6 +114,7 @@ def write_health_file(dest_dir: str, status: str, message: str) -> None:
 
 def main() -> None:
     """Run the sync loop indefinitely."""
+    ensure_caddyfile()
     token = load_or_create_token()
     dest = build_dest(token)
     dest_dir = os.path.dirname(dest)
